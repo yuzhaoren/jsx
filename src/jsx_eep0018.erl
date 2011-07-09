@@ -34,6 +34,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-define(RAW_LIST_TAG, '______dontfuckwithme').
 
 
 -spec json_to_term(JSON::binary(), Opts::decoder_opts()) -> eep0018().
@@ -204,6 +205,8 @@ term_to_events([{}]) ->
     [end_object, start_object];
 term_to_events([First|_] = List) when is_tuple(First), size(First) =:= 2 ->
     proplist_to_events(List, [start_object]);
+term_to_events([?RAW_LIST_TAG|T]) ->
+    list_to_events(T, [start_array]);
 term_to_events([I|_] = List) when is_integer(I) ->
     try term_to_event(list_to_binary(List))
     catch
@@ -215,18 +218,26 @@ term_to_events(List) when is_list(List) ->
 term_to_events(Term) ->
     term_to_event(Term). 
        
-    
+
+proplist_to_events([Atom|Rest], Acc) when is_atom(Atom) ->
+    proplist_to_events([{Atom, true}|Rest], Acc);
 proplist_to_events([{Key, Term}|Rest], Acc) ->
-    Event = term_to_event(Term),
+    {Dupes, Rest2} = lists:partition(fun({Key2, _}) -> Key2 =:= Key; (_) -> false end, Rest),
     EncodedKey = key_to_event(Key),
-    case encode_key_repeats(EncodedKey, Acc) of
-        false -> proplist_to_events(Rest, Event ++ EncodedKey ++ Acc)
-        ; true -> erlang:error(badarg)
-    end;
+    Event =
+        case Dupes of
+            [] -> term_to_event(Term);
+            _  ->
+                Term2 = [{'_type', bag}, {data, [?RAW_LIST_TAG, Term] ++ [T || {_, T} <- Dupes]}],
+                term_to_event(Term2)
+        end,
+    proplist_to_events(Rest2, Event ++ EncodedKey ++ Acc);
 proplist_to_events([], Acc) ->
     [end_object] ++ Acc;
 proplist_to_events(_, _) ->
     erlang:error(badarg).
+
+
     
     
 list_to_events([Term|Rest], Acc) ->
@@ -247,7 +258,7 @@ term_to_event(true) -> [{literal, true}];
 term_to_event(false) -> [{literal, false}];
 term_to_event(null) -> [{literal, null}];
 term_to_event({{Y,M,D},{Hrs,Mins,Secs}}) ->
-    Data = term_to_events([Y,M,D,Hrs,Mins,Secs]),
+    Data = term_to_events([?RAW_LIST_TAG,Y,M,D,Hrs,Mins,Secs]),
     [end_object] ++ Data
         ++ [{key, <<"data">>},
             {string, <<"date">>},
