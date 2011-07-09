@@ -202,8 +202,14 @@ term_to_events({{_,_,_},{_,_,_}} = T) ->
     term_to_event(T);
 term_to_events([{}]) ->
     [end_object, start_object];
-term_to_events([First|_] = List) when is_tuple(First) ->
+term_to_events([First|_] = List) when is_tuple(First), size(First) =:= 2 ->
     proplist_to_events(List, [start_object]);
+term_to_events([I|_] = List) when is_integer(I) ->
+    try term_to_event(list_to_binary(List))
+    catch
+        error:badarg ->
+            list_to_events(List, [start_array])
+    end;
 term_to_events(List) when is_list(List) ->
     list_to_events(List, [start_array]);
 term_to_events(Term) ->
