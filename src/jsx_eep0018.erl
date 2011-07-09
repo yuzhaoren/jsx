@@ -198,6 +198,8 @@ decode_key_repeats(_Key, []) -> false.
     
 %% convert eep0018 representation to jsx events. note special casing for the 
 %%   empty object
+term_to_events({{_,_,_},{_,_,_}} = T) ->
+    term_to_event(T);
 term_to_events([{}]) ->
     [end_object, start_object];
 term_to_events([First|_] = List) when is_tuple(First) ->
@@ -238,6 +240,51 @@ term_to_event(String) when is_binary(String) ->
 term_to_event(true) -> [{literal, true}];
 term_to_event(false) -> [{literal, false}];
 term_to_event(null) -> [{literal, null}];
+term_to_event({{Y,M,D},{Hrs,Mins,Secs}}) ->
+    Data = term_to_events([Y,M,D,Hrs,Mins,Secs]),
+    [end_object] ++ Data
+        ++ [{key, <<"data">>},
+            {string, <<"date">>},
+            {key, <<"_type">>},
+            start_object];
+term_to_event(Pid) when is_pid(Pid) ->
+    [end_object,
+     {string, json_escape(list_to_binary(pid_to_list(Pid)))},
+     {key, <<"data">>},
+     {string, <<"pid">>},
+     {key, <<"_type">>},
+     start_object];
+term_to_event(T) when is_tuple(T) ->
+    [end_object]
+        ++ term_to_events(tuple_to_list(T))
+        ++ [{key, <<"data">>},
+            {string, <<"tuple">>},
+            {key, <<"_type">>},
+            start_object];
+term_to_event(R) when is_reference(R) ->
+    [end_object,
+     {string, json_escape(list_to_binary(erlang:ref_to_list(R)))},
+     {key, <<"data">>},
+     {string, <<"ref">>},
+     {key, <<"_type">>},
+     start_object];
+term_to_event(P) when is_port(P) ->
+    [end_object,
+     {string, json_escape(list_to_binary(erlang:port_to_list(P)))},
+     {key, <<"data">>},
+     {string, <<"port">>},
+     {key, <<"_type">>},
+     start_object];
+term_to_event(F) when is_function(F) ->
+    Data = iolist_to_binary(io_lib:format("~p", [F])),
+    [end_object,
+     {string, json_escape(Data)},
+     {key, <<"data">>},
+     {string, <<"fun">>},
+     {key, <<"_type">>},
+     start_object];
+term_to_event(Atom) when is_atom(Atom) ->
+    [{string, json_escape(list_to_binary(atom_to_list(Atom)))}];
 term_to_event(_) -> erlang:error(badarg).
 
 
