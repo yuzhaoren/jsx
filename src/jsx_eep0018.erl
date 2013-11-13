@@ -200,8 +200,10 @@ decode_key_repeats(_Key, []) -> false.
 %%   empty object
 term_to_events([{}]) ->
     [end_object, start_object];
-term_to_events([First|_] = List) when is_tuple(First) ->
+term_to_events([First|_] = List) when  is_tuple(First), tuple_size(First) == 2 ->
     proplist_to_events(List, [start_object]);
+term_to_events([First|_] = List) when  is_tuple(First), tuple_size(First) /= 2 ->
+    tuplelist_to_events(List, [start_object]);
 term_to_events(List) when is_list(List) ->
     list_to_events(List, [start_array]);
 term_to_events(Term) ->
@@ -226,6 +228,10 @@ list_to_events([Term|Rest], Acc) ->
 list_to_events([], Acc) ->
     [end_array] ++ Acc.
 
+tuplelist_to_events([Term|Rest], Acc) ->
+     tuplelist_to_events(Rest, term_to_event(Term) ++ Acc);
+tuplelist_to_events([], Acc) ->
+    [end_array] ++ Acc.
 
 term_to_event(List) when is_list(List) ->
     term_to_events(List);
@@ -233,11 +239,34 @@ term_to_event(Float) when is_float(Float) ->
     [{float, jsx_utils:nice_decimal(Float)}];
 term_to_event(Integer) when is_integer(Integer) ->
     [{integer, erlang:integer_to_list(Integer)}];
-term_to_event(String) when is_binary(String) -> 
+term_to_event(String) when is_binary(String) ->
     [{string, json_escape(String)}];
 term_to_event(true) -> [{literal, true}];
 term_to_event(false) -> [{literal, false}];
 term_to_event(null) -> [{literal, null}];
+term_to_event(Atom) when is_atom(Atom) ->
+    A1=erlang:atom_to_binary(Atom,utf8),
+    term_to_event(A1);
+term_to_event(Pid) when is_pid(Pid) ->
+    P=list_to_binary(pid_to_list(Pid)),
+    term_to_event(P);
+term_to_event(Port) when is_port(Port) ->
+    P1=list_to_binary(erlang:port_to_list(Port)),
+    term_to_event(P1);
+term_to_event(Tuple) when is_tuple(Tuple) ->
+    T1=tuple_to_list(Tuple),
+    case T1 of
+        [Head,Tail] when is_tuple(Head),is_tuple(Tail) ->
+           L3=tuple_to_list(Head)++tuple_to_list(Tail),
+           io:format("l3 is ~p",[L3]),
+           term_to_event(L3);
+        _ ->
+            io:format("T1 is ~p",[T1]),
+            term_to_event(T1)
+    end;
+ %   list_to_binary([atom_to_list(M), atom_to_list(F),integer_to_list(A)])
+ %   [{tuple, tuple_to_list(Tuple)};
+ %   term_to_event(T1);
 term_to_event(_) -> erlang:error(badarg).
 
 
