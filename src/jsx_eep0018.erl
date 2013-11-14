@@ -231,10 +231,10 @@ list_to_events([Term|Rest], Acc) ->
 list_to_events([], Acc) ->
     [end_array] ++ Acc.
 
-tuplelist_to_events([Term|Rest], Acc) ->
-     tuplelist_to_events(Rest, term_to_event(Term) ++ Acc);
-tuplelist_to_events([], Acc) ->
-    [end_array] ++ Acc.
+%tuplelist_to_events([Term|Rest], Acc) ->
+%     tuplelist_to_events(Rest, term_to_event(Term) ++ Acc);
+%tuplelist_to_events([], Acc) ->
+%    [end_array] ++ Acc.
 
 term_to_event(List) when is_list(List) ->
     term_to_events(List);
