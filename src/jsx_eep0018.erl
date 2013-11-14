@@ -203,7 +203,8 @@ term_to_events([{}]) ->
 term_to_events([First|_] = List) when  is_tuple(First), tuple_size(First) == 2 ->
     proplist_to_events(List, [start_object]);
 term_to_events([First|_] = List) when  is_tuple(First), tuple_size(First) /= 2 ->
-    tuplelist_to_events(List, [start_object]);
+ %   tuplelist_to_events(List, [start_object]);
+      [end_object, start_object];
 term_to_events(List) when is_list(List) ->
     list_to_events(List, [start_array]);
 term_to_events(Term) ->
@@ -217,6 +218,8 @@ proplist_to_events([{Key, Term}|Rest], Acc) ->
         false -> proplist_to_events(Rest, Event ++ EncodedKey ++ Acc)
         ; true -> erlang:error(badarg)
     end;
+proplist_to_events([Atom|Rest],Acc) when is_atom(Atom) -> 
+    proplist_to_events(Rest, Acc);
 proplist_to_events([], Acc) ->
     [end_object] ++ Acc;
 proplist_to_events(_, _) ->
