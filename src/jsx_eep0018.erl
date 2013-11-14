@@ -261,10 +261,8 @@ term_to_event(Tuple) when is_tuple(Tuple) ->
     case T1 of
         [Head,Tail] when is_tuple(Head),is_tuple(Tail) ->
            L3=tuple_to_list(Head)++tuple_to_list(Tail),
-           io:format("l3 is ~p",[L3]),
            term_to_event(L3);
         _ ->
-            io:format("T1 is ~p",[T1]),
             term_to_event(T1)
     end;
  %   list_to_binary([atom_to_list(M), atom_to_list(F),integer_to_list(A)])
