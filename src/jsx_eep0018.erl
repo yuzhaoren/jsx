@@ -313,6 +313,8 @@ term_to_event(_) -> erlang:error(badarg).
 
 key_to_event(Key) when is_atom(Key) ->
     [{key, json_escape(erlang:atom_to_binary(Key, utf8))}];
+key_to_event(Key) when is_list(Key) ->
+    [{key, json_escape(erlang:list_to_binary(Key))}];
 key_to_event(Key) when is_binary(Key) ->
     [{key, json_escape(Key)}].
 
